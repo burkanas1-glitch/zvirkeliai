@@ -59,8 +59,6 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
 .btn-del{ padding:15px; border-radius:10px; border:1px solid #f99; background:#fee; color:red; cursor: pointer; font-size: 18px; width: 50px; }
 #toast{ position:fixed; top:70px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:8px 16px; border-radius:20px; font-size:12px; z-index:1000; opacity:0; transition:0.2s; pointer-events:none; }
 #toast.show{ opacity:1; }
-.export-row{ display:flex; gap:5px; padding:10px; border-top:1px solid var(--border); }
-.exp-btn{ flex:1; padding:8px; font-size:10px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -74,13 +72,11 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
       <button class="mode-btn" id="btnEdit" onclick="setMode('edit')">Žymėti</button>
     </div>
   </header>
-
   <div id="map"></div>
-
   <div id="bottom">
     <div class="bottom-handle" onclick="togglePanel()">
-      <div class="bottom-title">Mano keliai</div>
-      <div id="stats" style="font-size:12px; font-weight:bold; color: var(--blue);">0 vnt.</div>
+      <div class="bottom-title">Bendra informacija</div>
+      <div id="stats" style="font-size:12px; font-weight:bold; color: var(--blue);">Kraunama...</div>
     </div>
     <div class="bottom-content" id="bottomContent">
       <div class="filter-row">
@@ -89,11 +85,6 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
         <div class="filter-chip f3 on" id="fc3" onclick="toggleFilter(3)">🟢 Atlikta</div>
       </div>
       <div class="road-list" id="roadList"></div>
-      <div class="export-row">
-        <button class="exp-btn" onclick="exportData()">💾 EKSPORTUOTI</button>
-        <button class="exp-btn" onclick="document.getElementById('fileInput').click()">📂 IMPORTUOTI</button>
-        <input type="file" id="fileInput" style="display:none" onchange="importData(this)">
-      </div>
     </div>
   </div>
 </div>
@@ -101,16 +92,14 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
 <div id="sheet">
   <label class="input-label">KELIO PAVADINIMAS / VIETA</label>
   <input type="text" id="sheetTitleInput" class="input-field" placeholder="Pvz: Prie Petraičio sodybos">
-  
   <label class="input-label">BŪKLĖ</label>
   <div class="st-btns">
     <button class="st-btn" id="stb1" onclick="setStatus(1)">REIKIA</button>
     <button class="st-btn" id="stb2" onclick="setStatus(2)">SKUBU</button>
     <button class="st-btn" id="stb3" onclick="setStatus(3)">ATLIKTA</button>
   </div>
-  
   <div style="display:flex; gap:10px;">
-    <button class="btn-save" onclick="saveSheet()">IŠSAUGOTI</button>
+    <button class="btn-save" id="btnSave" onclick="saveSheet()">IŠSAUGOTI</button>
     <button class="btn-del" title="Ištrinti" onclick="deleteRoad()">🗑️</button>
   </div>
   <button onclick="closeSheet()" style="width:100%; margin-top:10px; border:none; background:none; color:gray; font-size: 12px;">Atšaukti</button>
@@ -119,9 +108,11 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
 <div id="toast"></div>
 
 <script>
-// Žeimelio ribos
+// --- KONFIGŪRACIJA ---
+const GOOGLE_URL = 'https://script.google.com/macros/s/AKfycbzv_48y2sBtlPlXRaIXIkwIRR2kFI3-kHZGzCP38NRNUSHIVz54ip8rDRe0Kf-2cAWy/exec';
+
 const ZEIMELIS_BOUNDS = [[56.15, 23.75], [56.45, 24.25]];
-let roads = JSON.parse(localStorage.getItem('zeimelis_data') || '{}');
+let roads = {};
 let mode = 'view', activeId = null, panelOpen = false, userMarker = null;
 let filters = {1:true, 2:true, 3:true};
 const COLORS = {1:'#d93025', 2:'#e27200', 3:'#188038'};
@@ -135,6 +126,18 @@ const map = L.map('map', {
 });
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+async function loadFromServer() {
+  try {
+    const res = await fetch(GOOGLE_URL);
+    const data = await res.json();
+    Object.values(window.layers).forEach(l => map.removeLayer(l));
+    window.layers = {}; roads = {};
+    data.forEach(r => { roads[r.id] = r; drawRoad(r.id); });
+    renderList();
+    toast("Duomenys atnaujinti");
+  } catch(e) { toast("Klaida kraunant"); }
+}
 
 function findMe() {
   navigator.geolocation.getCurrentPosition(pos => {
@@ -152,7 +155,6 @@ map.on('click', async e => {
   const data = await res.json();
   const way = data.elements[0];
   if(!way) return toast("Spauskite ant kelio");
-  
   const id = String(way.id);
   if(!roads[id]) {
     roads[id] = {id, name:way.tags.name || 'Bevardis kelias', status:1, latlngs:way.geometry.map(g=>[g.lat,g.lon])};
@@ -186,25 +188,26 @@ function setStatus(s) {
   for(let i=1;i<=3;i++) document.getElementById('stb'+i).className = 'st-btn' + (s===i?' a'+i:'');
 }
 
-function saveSheet() {
+async function saveSheet() {
   if(!activeId) return;
+  const btn = document.getElementById('btnSave');
+  btn.innerText = "SIUNČIAMA..."; btn.disabled = true;
   roads[activeId].name = document.getElementById('sheetTitleInput').value || 'Bevardis kelias';
-  localStorage.setItem('zeimelis_data', JSON.stringify(roads));
-  drawRoad(activeId);
-  renderList();
-  closeSheet();
-  toast("Išsaugota");
+  
+  try {
+    await fetch(GOOGLE_URL, { method: 'POST', body: JSON.stringify(roads[activeId]) });
+    drawRoad(activeId); renderList(); closeSheet(); toast("Išsaugota");
+  } catch(e) { toast("Klaida!"); }
+  btn.innerText = "IŠSAUGOTI"; btn.disabled = false;
 }
 
-function deleteRoad() {
-  if(!activeId || !confirm("Ištrinti šį kelią?")) return;
-  map.removeLayer(window.layers[activeId]);
-  delete roads[activeId];
-  delete window.layers[activeId];
-  localStorage.setItem('zeimelis_data', JSON.stringify(roads));
-  renderList();
-  closeSheet();
-  toast("Ištrinta");
+async function deleteRoad() {
+  if(!activeId || !confirm("Ištrinti visiem?")) return;
+  try {
+    await fetch(GOOGLE_URL, { method: 'POST', body: JSON.stringify({id: activeId, delete: true}) });
+    map.removeLayer(window.layers[activeId]);
+    delete roads[activeId]; renderList(); closeSheet(); toast("Ištrinta");
+  } catch(e) { toast("Klaida!"); }
 }
 
 function focusRoad(id) {
@@ -251,29 +254,7 @@ function toast(m) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
-function exportData() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(roads));
-  const a = document.createElement('a');
-  a.setAttribute("href", dataStr);
-  a.setAttribute("download", "zeimelio_keliai.json");
-  a.click();
-}
-
-function importData(input) {
-  const reader = new FileReader();
-  reader.onload = function(){
-    const imported = JSON.parse(reader.result);
-    roads = {...roads, ...imported};
-    localStorage.setItem('zeimelis_data', JSON.stringify(roads));
-    Object.keys(roads).forEach(drawRoad);
-    renderList();
-    toast("Duomenys importuoti");
-  };
-  reader.readAsText(input.files[0]);
-}
-
-Object.keys(roads).forEach(drawRoad);
-renderList();
+loadFromServer();
 </script>
 </body>
 </html>
