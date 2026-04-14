@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <meta name="theme-color" content="#ffffff">
-<meta name="color-scheme" content="light">
-<title>Žvirkeliai – Žeimelio sen.</title>
+<title>Žeimelio Žvirkeliai</title>
 
 <link rel="manifest" href="manifest.json">
 <script>
@@ -16,57 +15,37 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-
 :root{
-  --bg:#ffffff;
-  --panel:#f8f9fa;
-  --border:#dadce0;
-  --text:#202124;
-  --text2:#5f6368;
-  --red:#d93025;
-  --orange:#e27200;
-  --green:#188038;
-  --blue:#1a73e8;
-  --red-bg:rgba(217,48,37,0.1);
-  --orange-bg:rgba(226,114,0,0.1);
-  --green-bg:rgba(24,128,56,0.1);
+  --bg:#ffffff; --panel:#f8f9fa; --border:#dadce0; --text:#202124; --text2:#5f6368;
+  --red:#d93025; --orange:#e27200; --green:#188038; --blue:#1a73e8;
+  --red-bg:rgba(217,48,37,0.1); --orange-bg:rgba(226,114,0,0.1); --green-bg:rgba(24,128,56,0.1);
 }
-
 html,body{ height:100%; font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); overflow:hidden; }
 #app{ display:flex; flex-direction:column; height:100dvh; }
-
 header{ background:var(--panel); border-bottom:1px solid var(--border); padding:10px 14px; display:flex; align-items:center; gap:10px; z-index:600; }
 header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; flex:1; }
-
 .btn-loc { width: 40px; height: 36px; background: #fff; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
-
 .mode-toggle{ display:flex; background:#eee; border-radius:8px; padding:3px; gap:3px; }
 .mode-btn{ font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; padding:6px 12px; border-radius:6px; border:none; background:transparent; color:var(--text2); cursor:pointer; }
 .mode-btn.active{ background:#fff; color:#000; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-
 #map{ flex:1; z-index:1; background: #f0f0f0; }
-
 #bottom{ background:var(--panel); border-top:1px solid var(--border); z-index:600; }
 .bottom-handle{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; cursor:pointer; }
 .bottom-title{ font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; text-transform:uppercase; color: var(--text2); }
-
-.bottom-content{ display:none; flex-direction:column; max-height:40vh; overflow:hidden; }
+.bottom-content{ display:none; flex-direction:column; max-height:45vh; overflow:hidden; }
 .bottom-content.open{ display:flex; }
-
 .filter-row{ display:flex; gap:6px; padding:0 12px 10px; overflow-x:auto; }
 .filter-chip{ display:flex; align-items:center; gap:5px; padding:6px 12px; border-radius:20px; border:1px solid var(--border); font-size:11px; cursor:pointer; white-space:nowrap; }
 .filter-chip.on.f1{border-color:var(--red); background:var(--red-bg); color:var(--red);}
 .filter-chip.on.f2{border-color:var(--orange); background:var(--orange-bg); color:var(--orange);}
 .filter-chip.on.f3{border-color:var(--green); background:var(--green-bg); color:var(--green);}
-
-.road-list{ overflow-y:auto; padding:0 10px 10px; }
+.road-list{ overflow-y:auto; padding:0 10px 10px; flex: 1; }
 .road-item{ display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:6px; cursor:pointer; background: #fff; }
 .road-item-name{ flex:1; font-size:13px; font-weight:600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
 #sheet{ position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:3px solid var(--blue); border-radius:16px 16px 0 0; z-index:900; padding:20px; transform:translateY(100%); transition:transform .3s; }
 #sheet.open{ transform:translateY(0); }
 .st-btns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:15px 0; }
@@ -74,25 +53,21 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
 .st-btn.a1{ border-color:var(--red); color:var(--red); background:var(--red-bg); }
 .st-btn.a2{ border-color:var(--orange); color:var(--orange); background:var(--orange-bg); }
 .st-btn.a3{ border-color:var(--green); color:var(--green); background:var(--green-bg); }
-
 .input-label { font-size: 11px; color: var(--text2); font-weight: bold; margin-bottom: 5px; display: block; }
 .input-field { width:100%; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom: 12px; font-family: inherit; }
-.note-ta{ width:100%; height:60px; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:15px; resize: none; }
-.btn-save{ width:100%; padding:15px; border-radius:10px; border:none; background:var(--blue); color:#fff; font-weight:bold; cursor: pointer; }
-
-.user-dot { width:14px; height:14px; background:var(--blue); border:2px solid #fff; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.2); }
+.btn-save{ padding:15px; border-radius:10px; border:none; background:var(--blue); color:#fff; font-weight:bold; cursor: pointer; flex: 1; }
+.btn-del{ padding:15px; border-radius:10px; border:1px solid #f99; background:#fee; color:red; cursor: pointer; font-size: 18px; width: 50px; }
 #toast{ position:fixed; top:70px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:8px 16px; border-radius:20px; font-size:12px; z-index:1000; opacity:0; transition:0.2s; pointer-events:none; }
 #toast.show{ opacity:1; }
-
 .export-row{ display:flex; gap:5px; padding:10px; border-top:1px solid var(--border); }
-.exp-btn{ flex:1; padding:8px; font-size:10px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; }
+.exp-btn{ flex:1; padding:8px; font-size:10px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-weight: bold; }
 </style>
 </head>
 <body>
 
 <div id="app">
   <header>
-    <h1>🛣 Žvirkeliai</h1>
+    <h1>🛣 Žeimelio sen.</h1>
     <button class="btn-loc" onclick="findMe()">📍</button>
     <div class="mode-toggle">
       <button class="mode-btn active" id="btnView" onclick="setMode('view')">Žiūrėti</button>
@@ -104,7 +79,7 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
 
   <div id="bottom">
     <div class="bottom-handle" onclick="togglePanel()">
-      <div class="bottom-title">Pažymėti keliai</div>
+      <div class="bottom-title">Mano keliai</div>
       <div id="stats" style="font-size:12px; font-weight:bold; color: var(--blue);">0 vnt.</div>
     </div>
     <div class="bottom-content" id="bottomContent">
@@ -115,17 +90,17 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
       </div>
       <div class="road-list" id="roadList"></div>
       <div class="export-row">
-        <button class="exp-btn" onclick="exportCSV()">CSV</button>
-        <button class="exp-btn" onclick="exportJSON()">JSON</button>
-        <button class="exp-btn" style="color:red" onclick="clearAll()">Ištrinti</button>
+        <button class="exp-btn" onclick="exportData()">💾 EKSPORTUOTI</button>
+        <button class="exp-btn" onclick="document.getElementById('fileInput').click()">📂 IMPORTUOTI</button>
+        <input type="file" id="fileInput" style="display:none" onchange="importData(this)">
       </div>
     </div>
   </div>
 </div>
 
 <div id="sheet">
-  <label class="input-label">KELIO PAVADINIMAS</label>
-  <input type="text" id="sheetTitleInput" class="input-field" placeholder="Įveskite pavadinimą...">
+  <label class="input-label">KELIO PAVADINIMAS / VIETA</label>
+  <input type="text" id="sheetTitleInput" class="input-field" placeholder="Pvz: Prie Petraičio sodybos">
   
   <label class="input-label">BŪKLĖ</label>
   <div class="st-btns">
@@ -134,23 +109,31 @@ header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:60
     <button class="st-btn" id="stb3" onclick="setStatus(3)">ATLIKTA</button>
   </div>
   
-  <label class="input-label">PASTABA</label>
-  <textarea class="note-ta" id="sheetNote" placeholder="Papildoma informacija..."></textarea>
-  
-  <button class="btn-save" onclick="saveSheet()">IŠSAUGOTI DUOMENIS</button>
+  <div style="display:flex; gap:10px;">
+    <button class="btn-save" onclick="saveSheet()">IŠSAUGOTI</button>
+    <button class="btn-del" title="Ištrinti" onclick="deleteRoad()">🗑️</button>
+  </div>
   <button onclick="closeSheet()" style="width:100%; margin-top:10px; border:none; background:none; color:gray; font-size: 12px;">Atšaukti</button>
 </div>
 
 <div id="toast"></div>
 
 <script>
-let roads = JSON.parse(localStorage.getItem('zeimelis_v2') || '{}');
+// Žeimelio ribos
+const ZEIMELIS_BOUNDS = [[56.15, 23.75], [56.45, 24.25]];
+let roads = JSON.parse(localStorage.getItem('zeimelis_data') || '{}');
 let mode = 'view', activeId = null, panelOpen = false, userMarker = null;
 let filters = {1:true, 2:true, 3:true};
 const COLORS = {1:'#d93025', 2:'#e27200', 3:'#188038'};
 window.layers = {};
 
-const map = L.map('map', { center:[56.273, 23.998], zoom:13 });
+const map = L.map('map', { 
+  center:[56.273, 23.998], 
+  zoom:12,
+  maxBounds: ZEIMELIS_BOUNDS,
+  maxBoundsViscosity: 1.0
+});
+
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
 function findMe() {
@@ -159,7 +142,6 @@ function findMe() {
     if(!userMarker) userMarker = L.marker(ll, {icon:L.divIcon({className:'user-dot'})}).addTo(map);
     else userMarker.setLatLng(ll);
     map.setView(ll, 16);
-    toast("Lokacija nustatyta");
   }, () => alert("Įjunkite GPS"));
 }
 
@@ -169,11 +151,11 @@ map.on('click', async e => {
   const res = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json];way["highway"](around:30,${e.latlng.lat},${e.latlng.lng});out geom;`);
   const data = await res.json();
   const way = data.elements[0];
-  if(!way) return toast("Spauskite ant kelio linijos");
+  if(!way) return toast("Spauskite ant kelio");
   
   const id = String(way.id);
   if(!roads[id]) {
-    roads[id] = {id, name:way.tags.name || way.tags['name:lt'] || 'Bevardis kelias', status:1, note:'', latlngs:way.geometry.map(g=>[g.lat,g.lon])};
+    roads[id] = {id, name:way.tags.name || 'Bevardis kelias', status:1, latlngs:way.geometry.map(g=>[g.lat,g.lon])};
     drawRoad(id);
     renderList();
   }
@@ -192,7 +174,6 @@ function drawRoad(id) {
 function openSheet(id) {
   activeId = id; const r = roads[id];
   document.getElementById('sheetTitleInput').value = r.name;
-  document.getElementById('sheetNote').value = r.note;
   for(let i=1;i<=3;i++) document.getElementById('stb'+i).className = 'st-btn' + (r.status===i?' a'+i:'');
   document.getElementById('sheet').classList.add('open');
 }
@@ -208,18 +189,27 @@ function setStatus(s) {
 function saveSheet() {
   if(!activeId) return;
   roads[activeId].name = document.getElementById('sheetTitleInput').value || 'Bevardis kelias';
-  roads[activeId].note = document.getElementById('sheetNote').value;
-  save();
+  localStorage.setItem('zeimelis_data', JSON.stringify(roads));
   drawRoad(activeId);
   renderList();
   closeSheet();
   toast("Išsaugota");
 }
 
+function deleteRoad() {
+  if(!activeId || !confirm("Ištrinti šį kelią?")) return;
+  map.removeLayer(window.layers[activeId]);
+  delete roads[activeId];
+  delete window.layers[activeId];
+  localStorage.setItem('zeimelis_data', JSON.stringify(roads));
+  renderList();
+  closeSheet();
+  toast("Ištrinta");
+}
+
 function focusRoad(id) {
   const r = roads[id];
-  const center = r.latlngs[Math.floor(r.latlngs.length / 2)];
-  map.setView(center, 15);
+  map.setView(r.latlngs[Math.floor(r.latlngs.length / 2)], 15);
   openSheet(id);
 }
 
@@ -227,13 +217,10 @@ function renderList() {
   const list = document.getElementById('roadList');
   const items = Object.values(roads);
   document.getElementById('stats').innerText = items.length + " vnt.";
-  if(items.length === 0) { list.innerHTML = '<div style="text-align:center; padding:20px; color:gray; font-size:12px;">Sąrašas tuščias</div>'; return; }
-  
   list.innerHTML = items.sort((a,b) => a.status - b.status).map(r => `
     <div class="road-item" onclick="focusRoad('${r.id}')">
-      <div style="width:12px;height:12px;border-radius:50%;background:${COLORS[r.status]};flex-shrink:0;"></div>
+      <div style="width:12px;height:12px;border-radius:50%;background:${COLORS[r.status]};"></div>
       <div class="road-item-name">${r.name}</div>
-      <div style="font-size:10px; color:var(--blue); font-weight:bold;">ŽIŪRĖTI ></div>
     </div>
   `).join('');
 }
@@ -251,13 +238,11 @@ function setMode(m) {
   mode = m;
   document.getElementById('btnView').classList.toggle('active', m==='view');
   document.getElementById('btnEdit').classList.toggle('active', m==='edit');
-  if(m==='edit') toast("Bakstelėkite kelią žemėlapyje");
 }
 
 function togglePanel() {
   panelOpen = !panelOpen;
   document.getElementById('bottomContent').classList.toggle('open', panelOpen);
-  if(panelOpen) renderList();
 }
 
 function toast(m) {
@@ -266,17 +251,25 @@ function toast(m) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
-function save() { localStorage.setItem('zeimelis_v2', JSON.stringify(roads)); }
-function clearAll() { if(confirm("Ištrinti visus duomenis?")) { localStorage.clear(); location.reload(); } }
-function exportCSV() {
-  let csv = "\uFEFFPavadinimas,Statusas,Pastaba\n";
-  Object.values(roads).forEach(r => csv += `"${r.name}","${r.status}","${r.note}"\n`);
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='keliai.csv'; a.click();
+function exportData() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(roads));
+  const a = document.createElement('a');
+  a.setAttribute("href", dataStr);
+  a.setAttribute("download", "zeimelio_keliai.json");
+  a.click();
 }
-function exportJSON() {
-  const blob = new Blob([JSON.stringify(roads)], {type:'application/json'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='keliai.json'; a.click();
+
+function importData(input) {
+  const reader = new FileReader();
+  reader.onload = function(){
+    const imported = JSON.parse(reader.result);
+    roads = {...roads, ...imported};
+    localStorage.setItem('zeimelis_data', JSON.stringify(roads));
+    Object.keys(roads).forEach(drawRoad);
+    renderList();
+    toast("Duomenys importuoti");
+  };
+  reader.readAsText(input.files[0]);
 }
 
 Object.keys(roads).forEach(drawRoad);
