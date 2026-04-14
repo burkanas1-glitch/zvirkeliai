@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<meta name="color-scheme" content="light">
+<title>Žvirkeliai – Žeimelio sen.</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+/* ŠVIESUS DIZAINAS */
+:root {
+  --bg: #ffffff;
+  --panel: #f8f9fa;
+  --border: #dee2e6;
+  --text: #212529;
+  --text-muted: #6c757d;
+  --accent: #0d6efd;
+}
+
+body {
+  height: 100vh;
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+}
+
+header h1 { font-size: 16px; flex: 1; font-weight: 600; color: #000; }
+
+.btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-active { background: #000; color: #fff; border-color: #000; }
+
+#map { flex: 1; background: #f0f0f0; }
+
+/* ŽYMA APAČIOJE (Sąrašas) */
+#bottom-bar {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* REDAGAVIMO LANGAS */
+#sheet {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #fff;
+  border-top: 2px solid #000;
+  border-radius: 16px 16px 0 0;
+  padding: 20px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 2000;
+  box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+}
+#sheet.open { transform: translateY(0); }
+
+.status-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 15px 0; }
+.st-btn {
+  padding: 15px 5px; border-radius: 10px; border: 2px solid #eee;
+  text-align: center; font-weight: bold; cursor: pointer; font-size: 11px;
+}
+/* Ryškios spalvos ant šviesaus fono */
+.st-1 { color: #d93025; border-color: #d93025; background: #fff5f5; } /* Reikia */
+.st-2 { color: #e27200; border-color: #e27200; background: #fffaf0; } /* Skubu */
+.st-3 { color: #188038; border-color: #188038; background: #f0fff4; } /* Atlikta */
+
+textarea {
+  width: 100%; height: 80px; border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px; margin-bottom: 15px; font-family: inherit;
+}
+
+.user-dot {
+  width: 14px; height: 14px; background: #0d6efd;
+  border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.3);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛣 Žvirkeliai</h1>
+  <button class="btn btn-primary" onclick="findMe()">📍 Vieta</button>
+  <button class="btn" id="editBtn" onclick="toggleEdit()">🔍 Žiūrėti</button>
+</header>
+
+<div id="map"></div>
+
+<div id="bottom-bar" onclick="alert('Iš viso pažymėta: ' + Object.keys(roads).length)">
+  <span style="font-weight: 600; font-size: 12px;">SĄRAŠAS IR PARINKTYS</span>
+  <span id="counter" style="font-size: 12px; color: var(--text-muted);">0 kelių</span>
+</div>
+
+<div id="sheet">
+  <h2 id="sheetTitle" style="margin-bottom: 10px; font-size: 18px;">Kelias</h2>
+  <div class="status-grid">
+    <div class="st-btn st-1" onclick="setStatus(1)">REIKIA</div>
+    <div class="st-btn st-2" onclick="setStatus(2)">SKUBU</div>
+    <div class="st-btn st-3" onclick="setStatus(3)">ATLIKTA</div>
+  </div>
+  <textarea id="sheetNote" placeholder="Pastaba (pvz. duobės, greidžiavimas)..."></textarea>
+  <button class="btn btn-primary" style="width: 100%; padding: 15px;" onclick="saveRoad()">IŠSAUGOTI</button>
+  <button class="btn" style="width: 100%; margin-top: 10px; border: none;" onclick="closeSheet()">Atšaukti</button>
+</div>
+
+<script>
+let roads = JSON.parse(localStorage.getItem('zeimelis_v4') || '{}');
+let isEdit = false;
+let activeId = null;
+let userMarker = null;
+
+// PAGRINDINIS ŽEMĖLAPIS: Šviesus (Positron), kuriame visi keliai atrodo kaip tamsiai pilkos linijos
+const map = L.map('map', { center: [56.273, 23.998], zoom: 13 });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© CartoDB'
+}).addTo(map);
+
+function findMe() {
+  map.locate({setView: true, maxZoom: 16});
+}
+
+map.on('locationfound', e => {
+  if(!userMarker) userMarker = L.marker(e.latlng, {icon: L.divIcon({className:'user-dot'})}).addTo(map);
+  else userMarker.setLatLng(e.latlng);
+});
+
+function toggleEdit() {
+  isEdit = !isEdit;
+  const btn = document.getElementById('editBtn');
+  btn.innerText = isEdit ? "✏️ Žymėti" : "🔍 Žiūrėti";
+  btn.className = isEdit ? "btn btn-active" : "btn";
+  if(isEdit) alert("Dabar spauskite ant kelio žemėlapyje, kad jį pažymėtumėte.");
+}
+
+map.on('click', async e => {
+  if(!isEdit) return;
+  
+  // Overpass paieška
+  const res = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json];way["highway"](around:25,${e.latlng.lat},${e.latlng.lng});out geom;`);
+  const data = await res.json();
+  const way = data.elements[0];
+  
+  if(way) {
+    const id = way.id;
+    if(!roads[id]) {
+      roads[id] = {
+        id, 
+        name: way.tags.name || way.tags['name:lt'] || "Bevardis kelias",
+        status: 1,
+        note: "",
+        latlngs: way.geometry.map(g => [g.lat, g.lon])
+      };
+      drawRoad(id);
+    }
+    openSheet(id);
+  }
+});
+
+function drawRoad(id) {
+  const r = roads[id];
+  const colors = {1: '#e05555', 2: '#f09030', 3: '#28a745'};
+  const poly = L.polyline(r.latlngs, {
+    color: colors[r.status], 
+    weight: 8, 
+    opacity: 0.85,
+    lineCap: 'round'
+  }).addTo(map);
+  
+  poly.on('click', (e) => {
+    L.DomEvent.stopPropagation(e);
+    if(isEdit) openSheet(id);
+  });
+}
+
+function openSheet(id) {
+  activeId = id;
+  const r = roads[id];
+  document.getElementById('sheetTitle').innerText = r.name;
+  document.getElementById('sheetNote').value = r.note;
+  document.getElementById('sheet').classList.add('open');
+}
+
+function closeSheet() { document.getElementById('sheet').classList.remove('open'); }
+
+function setStatus(s) {
+  if(!activeId) return;
+  roads[activeId].status = s;
+  save();
+  location.reload(); // Paprasčiausias būdas atnaujinti spalvą žemėlapyje
+}
+
+function saveRoad() {
+  roads[activeId].note = document.getElementById('sheetNote').value;
+  save();
+  closeSheet();
+  updateCounter();
+}
+
+function save() { localStorage.setItem('zeimelis_v4', JSON.stringify(roads)); }
+
+function updateCounter() {
+  document.getElementById('counter').innerText = Object.keys(roads).length + " kelių";
+}
+
+// Pradinis užkrovimas
+Object.keys(roads).forEach(drawRoad);
+updateCounter();
+</script>
+
+</body>
+</html>
