@@ -8,235 +8,280 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 
-/* ŠVIESUS DIZAINAS */
-:root {
-  --bg: #ffffff;
-  --panel: #f8f9fa;
-  --border: #dee2e6;
-  --text: #212529;
-  --text-muted: #6c757d;
-  --accent: #0d6efd;
+:root{
+  --bg:#ffffff;
+  --panel:#f8f9fa;
+  --panel2:#ffffff;
+  --border:#dadce0;
+  --text:#202124;
+  --text2:#5f6368;
+  --red:#d93025;
+  --orange:#e27200;
+  --green:#188038;
+  --blue:#1a73e8;
+  --red-bg:rgba(217,48,37,0.1);
+  --orange-bg:rgba(226,114,0,0.1);
+  --green-bg:rgba(24,128,56,0.1);
+  --blue-bg:rgba(26,115,232,0.1);
 }
 
-body {
-  height: 100vh;
-  font-family: 'IBM Plex Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+html,body{
+  height:100%;
+  font-family:'IBM Plex Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;
 }
 
-header {
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 1000;
+#app{ display:flex; flex-direction:column; height:100dvh; }
+
+/* Header */
+header{
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+  padding:10px 14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  z-index:600;
+}
+header h1{ font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; flex:1; }
+
+.btn-loc {
+  width: 40px; height: 36px;
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
 }
 
-header h1 { font-size: 16px; flex: 1; font-weight: 600; color: #000; }
-
-.btn {
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  background: #fff;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  transition: 0.2s;
+.mode-toggle{ display:flex; background:#eee; border-radius:8px; padding:3px; gap:3px; }
+.mode-btn{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+  padding:6px 12px; border-radius:6px; border:none; background:transparent;
+  color:var(--text2); cursor:pointer;
 }
+.mode-btn.active{ background:#fff; color:#000; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
-.btn-active { background: #000; color: #fff; border-color: #000; }
+/* Map */
+#map{ flex:1; z-index:1; background: #f0f0f0; }
 
-#map { flex: 1; background: #f0f0f0; }
+/* Bottom panel */
+#bottom{ background:var(--panel); border-top:1px solid var(--border); z-index:600; }
+.bottom-handle{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; cursor:pointer; }
+.bottom-title{ font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; text-transform:uppercase; color: var(--text2); }
 
-/* ŽYMA APAČIOJE (Sąrašas) */
-#bottom-bar {
-  background: var(--panel);
-  border-top: 1px solid var(--border);
-  padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
+.bottom-content{ display:none; flex-direction:column; max-height:40vh; overflow:hidden; }
+.bottom-content.open{ display:flex; }
+
+.filter-row{ display:flex; gap:6px; padding:0 12px 10px; overflow-x:auto; }
+.filter-chip{
+  display:flex; align-items:center; gap:5px; padding:6px 12px; border-radius:20px;
+  border:1px solid var(--border); font-size:11px; cursor:pointer; white-space:nowrap;
 }
+.filter-chip.on.f1{border-color:var(--red); background:var(--red-bg); color:var(--red);}
+.filter-chip.on.f2{border-color:var(--orange); background:var(--orange-bg); color:var(--orange);}
+.filter-chip.on.f3{border-color:var(--green); background:var(--green-bg); color:var(--green);}
 
-/* REDAGAVIMO LANGAS */
-#sheet {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: #fff;
-  border-top: 2px solid #000;
-  border-radius: 16px 16px 0 0;
-  padding: 20px;
-  transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 2000;
-  box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+.road-list{ overflow-y:auto; padding:0 10px 10px; }
+.road-item{
+  display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--border);
+  border-radius:8px; margin-bottom:6px; cursor:pointer; background: #fff;
 }
-#sheet.open { transform: translateY(0); }
+.road-item-name{ flex:1; font-size:13px; font-weight:600; }
 
-.status-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 15px 0; }
-.st-btn {
-  padding: 15px 5px; border-radius: 10px; border: 2px solid #eee;
-  text-align: center; font-weight: bold; cursor: pointer; font-size: 11px;
+/* Sheet */
+#sheet{
+  position:fixed; bottom:0; left:0; right:0; background:#fff;
+  border-top:3px solid var(--blue); border-radius:16px 16px 0 0;
+  z-index:900; padding:20px; transform:translateY(100%); transition:transform .3s;
 }
-/* Ryškios spalvos ant šviesaus fono */
-.st-1 { color: #d93025; border-color: #d93025; background: #fff5f5; } /* Reikia */
-.st-2 { color: #e27200; border-color: #e27200; background: #fffaf0; } /* Skubu */
-.st-3 { color: #188038; border-color: #188038; background: #f0fff4; } /* Atlikta */
+#sheet.open{ transform:translateY(0); }
+.st-btns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:15px 0; }
+.st-btn{ padding:12px 5px; border-radius:10px; border:1px solid var(--border); background:#fff; font-size:10px; font-weight:bold; cursor:pointer; }
+.st-btn.a1{ border-color:var(--red); color:var(--red); background:var(--red-bg); }
+.st-btn.a2{ border-color:var(--orange); color:var(--orange); background:var(--orange-bg); }
+.st-btn.a3{ border-color:var(--green); color:var(--green); background:var(--green-bg); }
 
-textarea {
-  width: 100%; height: 80px; border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px; margin-bottom: 15px; font-family: inherit;
-}
+.note-ta{ width:100%; height:70px; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:15px; }
+.btn-save{ width:100%; padding:15px; border-radius:10px; border:none; background:var(--blue); color:#fff; font-weight:bold; }
 
-.user-dot {
-  width: 14px; height: 14px; background: #0d6efd;
-  border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.3);
-}
+/* Location marker */
+.user-dot { width:14px; height:14px; background:var(--blue); border:2px solid #fff; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.2); }
+#toast{ position:fixed; top:70px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:8px 16px; border-radius:20px; font-size:12px; z-index:1000; opacity:0; transition:0.2s; pointer-events:none; }
+#toast.show{ opacity:1; }
+
+.export-row{ display:flex; gap:5px; padding:10px; border-top:1px solid var(--border); }
+.exp-btn{ flex:1; padding:8px; font-size:10px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🛣 Žvirkeliai</h1>
-  <button class="btn btn-primary" onclick="findMe()">📍 Vieta</button>
-  <button class="btn" id="editBtn" onclick="toggleEdit()">🔍 Žiūrėti</button>
-</header>
+<div id="app">
+  <header>
+    <h1>🛣 Žvirkeliai</h1>
+    <button class="btn-loc" onclick="findMe()">📍</button>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btnView" onclick="setMode('view')">Žiūrėti</button>
+      <button class="mode-btn" id="btnEdit" onclick="setMode('edit')">Žymėti</button>
+    </div>
+  </header>
 
-<div id="map"></div>
+  <div id="map"></div>
 
-<div id="bottom-bar" onclick="alert('Iš viso pažymėta: ' + Object.keys(roads).length)">
-  <span style="font-weight: 600; font-size: 12px;">SĄRAŠAS IR PARINKTYS</span>
-  <span id="counter" style="font-size: 12px; color: var(--text-muted);">0 kelių</span>
+  <div id="bottom">
+    <div class="bottom-handle" onclick="togglePanel()">
+      <div class="bottom-title">Sąrašas</div>
+      <div id="stats" style="font-size:12px; font-weight:bold;">0 kelių</div>
+    </div>
+    <div class="bottom-content" id="bottomContent">
+      <div class="filter-row">
+        <div class="filter-chip f1 on" id="fc1" onclick="toggleFilter(1)">🔴 Reikia</div>
+        <div class="filter-chip f2 on" id="fc2" onclick="toggleFilter(2)">🟠 Skubu</div>
+        <div class="filter-chip f3 on" id="fc3" onclick="toggleFilter(3)">🟢 Atlikta</div>
+      </div>
+      <div class="road-list" id="roadList"></div>
+      <div class="export-row">
+        <button class="exp-btn" onclick="exportCSV()">CSV</button>
+        <button class="exp-btn" onclick="exportJSON()">JSON</button>
+        <button class="exp-btn" style="color:red" onclick="clearAll()">Ištrinti</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="sheet">
-  <h2 id="sheetTitle" style="margin-bottom: 10px; font-size: 18px;">Kelias</h2>
-  <div class="status-grid">
-    <div class="st-btn st-1" onclick="setStatus(1)">REIKIA</div>
-    <div class="st-btn st-2" onclick="setStatus(2)">SKUBU</div>
-    <div class="st-btn st-3" onclick="setStatus(3)">ATLIKTA</div>
+  <h2 id="sheetTitle" style="font-size:16px; margin-bottom:10px;">Kelias</h2>
+  <div class="st-btns">
+    <button class="st-btn" id="stb1" onclick="setStatus(1)">REIKIA</button>
+    <button class="st-btn" id="stb2" onclick="setStatus(2)">SKUBU</button>
+    <button class="st-btn" id="stb3" onclick="setStatus(3)">ATLIKTA</button>
   </div>
-  <textarea id="sheetNote" placeholder="Pastaba (pvz. duobės, greidžiavimas)..."></textarea>
-  <button class="btn btn-primary" style="width: 100%; padding: 15px;" onclick="saveRoad()">IŠSAUGOTI</button>
-  <button class="btn" style="width: 100%; margin-top: 10px; border: none;" onclick="closeSheet()">Atšaukti</button>
+  <textarea class="note-ta" id="sheetNote" placeholder="Pastaba..."></textarea>
+  <button class="btn-save" onclick="saveSheet()">IŠSAUGOTI</button>
+  <button onclick="closeSheet()" style="width:100%; margin-top:10px; border:none; background:none; color:gray;">Uždaryti</button>
 </div>
 
-<script>
-let roads = JSON.parse(localStorage.getItem('zeimelis_v4') || '{}');
-let isEdit = false;
-let activeId = null;
-let userMarker = null;
+<div id="toast"></div>
 
-// PAGRINDINIS ŽEMĖLAPIS: Šviesus (Positron), kuriame visi keliai atrodo kaip tamsiai pilkos linijos
-const map = L.map('map', { center: [56.273, 23.998], zoom: 13 });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© CartoDB'
-}).addTo(map);
+<script>
+let roads = JSON.parse(localStorage.getItem('zeimelis_v2') || '{}');
+let mode = 'view', activeId = null, panelOpen = false, userMarker = null;
+let filters = {1:true, 2:true, 3:true};
+const COLORS = {1:'#d93025', 2:'#e27200', 3:'#188038'};
+
+// Žemėlapis su šviesiu fonu ir ryškiais (tamsiais) pagrindiniais keliais
+const map = L.map('map', { center:[56.037, 23.704], zoom:13 });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
 function findMe() {
-  map.locate({setView: true, maxZoom: 16});
-}
-
-map.on('locationfound', e => {
-  if(!userMarker) userMarker = L.marker(e.latlng, {icon: L.divIcon({className:'user-dot'})}).addTo(map);
-  else userMarker.setLatLng(e.latlng);
-});
-
-function toggleEdit() {
-  isEdit = !isEdit;
-  const btn = document.getElementById('editBtn');
-  btn.innerText = isEdit ? "✏️ Žymėti" : "🔍 Žiūrėti";
-  btn.className = isEdit ? "btn btn-active" : "btn";
-  if(isEdit) alert("Dabar spauskite ant kelio žemėlapyje, kad jį pažymėtumėte.");
+  navigator.geolocation.getCurrentPosition(pos => {
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+    if(!userMarker) userMarker = L.marker(ll, {icon:L.divIcon({className:'user-dot'})}).addTo(map);
+    else userMarker.setLatLng(ll);
+    map.setView(ll, 16);
+    toast("Lokacija rasta");
+  }, () => alert("Įjunkite GPS"));
 }
 
 map.on('click', async e => {
-  if(!isEdit) return;
-  
-  // Overpass paieška
+  if(mode !== 'edit') return;
+  toast("Ieškoma...");
   const res = await fetch(`https://overpass-api.de/api/interpreter?data=[out:json];way["highway"](around:25,${e.latlng.lat},${e.latlng.lng});out geom;`);
   const data = await res.json();
   const way = data.elements[0];
+  if(!way) return toast("Kelio nėra arti");
   
-  if(way) {
-    const id = way.id;
-    if(!roads[id]) {
-      roads[id] = {
-        id, 
-        name: way.tags.name || way.tags['name:lt'] || "Bevardis kelias",
-        status: 1,
-        note: "",
-        latlngs: way.geometry.map(g => [g.lat, g.lon])
-      };
-      drawRoad(id);
-    }
-    openSheet(id);
+  const id = String(way.id);
+  if(!roads[id]) {
+    roads[id] = {id, name:way.tags.name||'Bevardis', status:1, note:'', latlngs:way.geometry.map(g=>[g.lat,g.lon])};
+    drawRoad(id);
   }
+  openSheet(id);
 });
 
 function drawRoad(id) {
   const r = roads[id];
-  const colors = {1: '#e05555', 2: '#f09030', 3: '#28a745'};
-  const poly = L.polyline(r.latlngs, {
-    color: colors[r.status], 
-    weight: 8, 
-    opacity: 0.85,
-    lineCap: 'round'
-  }).addTo(map);
-  
-  poly.on('click', (e) => {
-    L.DomEvent.stopPropagation(e);
-    if(isEdit) openSheet(id);
-  });
+  const poly = L.polyline(r.latlngs, {color:COLORS[r.status], weight:8, opacity:0.9}).addTo(map);
+  if(!filters[r.status]) poly.remove();
+  poly.on('click', e => { L.DomEvent.stopPropagation(e); openSheet(id); });
+  if(window.layers) window.layers[id] = poly; else { window.layers = {}; window.layers[id] = poly; }
 }
 
 function openSheet(id) {
-  activeId = id;
-  const r = roads[id];
+  activeId = id; const r = roads[id];
   document.getElementById('sheetTitle').innerText = r.name;
   document.getElementById('sheetNote').value = r.note;
+  for(let i=1;i<=3;i++) document.getElementById('stb'+i).className = 'st-btn' + (r.status===i?' a'+i:'');
   document.getElementById('sheet').classList.add('open');
 }
 
 function closeSheet() { document.getElementById('sheet').classList.remove('open'); }
 
 function setStatus(s) {
-  if(!activeId) return;
   roads[activeId].status = s;
-  save();
-  location.reload(); // Paprasčiausias būdas atnaujinti spalvą žemėlapyje
+  save(); location.reload();
 }
 
-function saveRoad() {
+function saveSheet() {
   roads[activeId].note = document.getElementById('sheetNote').value;
-  save();
-  closeSheet();
-  updateCounter();
+  save(); closeSheet(); renderList(); toast("Išsaugota");
 }
 
-function save() { localStorage.setItem('zeimelis_v4', JSON.stringify(roads)); }
-
-function updateCounter() {
-  document.getElementById('counter').innerText = Object.keys(roads).length + " kelių";
+function toggleFilter(s) {
+  filters[s] = !filters[s];
+  document.getElementById('fc'+s).classList.toggle('on', filters[s]);
+  location.reload();
 }
 
-// Pradinis užkrovimas
+function renderList() {
+  const list = document.getElementById('roadList');
+  const items = Object.values(roads);
+  document.getElementById('stats').innerText = items.length + " vnt.";
+  list.innerHTML = items.map(r => `
+    <div class="road-item" onclick="openSheet('${r.id}')">
+      <div style="width:10px;height:10px;border-radius:50%;background:${COLORS[r.status]}"></div>
+      <div class="road-item-name">${r.name}</div>
+    </div>
+  `).join('');
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnView').classList.toggle('active', m==='view');
+  document.getElementById('btnEdit').classList.toggle('active', m==='edit');
+}
+
+function togglePanel() {
+  panelOpen = !panelOpen;
+  document.getElementById('bottomContent').classList.toggle('open', panelOpen);
+  if(panelOpen) renderList();
+}
+
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.innerText = m; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function save() { localStorage.setItem('zeimelis_v2', JSON.stringify(roads)); }
+function clearAll() { if(confirm("Ištrinti viską?")) { localStorage.clear(); location.reload(); } }
+function exportCSV() {
+  let csv = "Pavadinimas,Statusas,Pastaba\n";
+  Object.values(roads).forEach(r => csv += `"${r.name}","${r.status}","${r.note}"\n`);
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='keliai.csv'; a.click();
+}
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(roads)], {type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='keliai.json'; a.click();
+}
+
 Object.keys(roads).forEach(drawRoad);
-updateCounter();
+renderList();
 </script>
-
 </body>
 </html>
